@@ -5,6 +5,8 @@ using UnityEngine;
 
 public class GolemBase : NpcBase
 {
+    private UnityEngine.AI.NavMeshAgent agent; // NavMeshAgent reference
+
     // Enum for Golem types
     public enum GolemType
     {
@@ -23,6 +25,9 @@ public class GolemBase : NpcBase
 
     private void Start()
     {
+        agent = GetComponent<UnityEngine.AI.NavMeshAgent>(); // Get NavMeshAgent
+        agent.speed = dexterity * 0.3f; // Adjust speed based on dexterity
+        agent.stoppingDistance = 0.5f; // Stop before reaching exact position
         DecideGatherDeposit();
     }
     private void Update()
@@ -34,7 +39,7 @@ public class GolemBase : NpcBase
     }
     public void DecideGatherDeposit()
     {
-        if (heldResourceMax == heldResourceCurrent)
+        if (heldResourceMax <= heldResourceCurrent)
         {
             SetDestinationDeposit();
         }
@@ -46,13 +51,13 @@ public class GolemBase : NpcBase
 
     public void SetDestinationDeposit()
     {
+        Building[] allObjects = FindObjectsByType<Building>(FindObjectsSortMode.None); // Get all active GameObjects
         switch (currentJob)
         {
             case Jobs.None:
                 currentDestination = Vector3.zero;
                 break;
             case Jobs.GatherWood:
-                Building[] allObjects = FindObjectsByType<Building>(FindObjectsSortMode.None); // Get all active GameObjects
                 foreach (Building obj in allObjects)
                 {
                     if (obj.tag == "WoodStorage") 
@@ -64,8 +69,26 @@ public class GolemBase : NpcBase
                 }
                 break;
             case Jobs.GatherRock:
+                foreach (Building obj in allObjects)
+                {
+                    if (obj.tag == "RockStorage") 
+                    {
+                        currentDestination =  obj.transform.position;
+                        Debug.Log(obj.transform.position);
+                        break;
+                    }
+                }
                 break;
             case Jobs.GatherClay:
+                foreach (Building obj in allObjects)
+                {
+                    if (obj.tag == "ClayStorage") 
+                    {
+                        currentDestination =  obj.transform.position;
+                        Debug.Log(obj.transform.position);
+                        break;
+                    }
+                }
                 break;
         }
         
@@ -77,50 +100,70 @@ public class GolemBase : NpcBase
         SetDestinationGather();
     }
     public void SetDestinationGather()
+{
+    ResourceNode[] allObjects = FindObjectsByType<ResourceNode>(FindObjectsSortMode.None); // Get all active GameObjects
+    bool allDepleted = true; // Assume all are depleted, prove otherwise
+
+    switch (currentJob)
     {
-        switch (currentJob)
-        {
-            case Jobs.None:
-                currentDestination = Vector3.zero;
-                break;
-            case Jobs.GatherWood:
-                ResourceNode[] allObjects = FindObjectsByType<ResourceNode>(FindObjectsSortMode.None); // Get all active GameObjects
-                foreach (ResourceNode obj in allObjects)
+        case Jobs.None:
+            currentDestination = Vector3.zero;
+            break;
+
+        case Jobs.GatherWood:
+            foreach (ResourceNode obj in allObjects)
+            {
+                if (obj.tag == "Wood" && !obj.depleted)
                 {
-                    if (obj.tag == "Wood" && !obj.depleted)
-                    {
-                        currentDestination = obj.transform.position;
-                        Debug.Log(obj.transform.position);
-                        break;
-                    }
+                    currentDestination = obj.transform.position;
+                    Debug.Log(obj.transform.position);
+                    allDepleted = false; // At least one resource is available
+                    break;
                 }
-                break;
-            case Jobs.GatherRock:
-                break;
-            case Jobs.GatherClay:
-                break;
-        }
+            }
+            if (allDepleted) StartCoroutine(AvailibleResourceCheck());
+            break;
+
+        case Jobs.GatherRock:
+            foreach (ResourceNode obj in allObjects)
+            {
+                if (obj.tag == "Rock" && !obj.depleted)
+                {
+                    currentDestination = obj.transform.position;
+                    Debug.Log(obj.transform.position);
+                    allDepleted = false;
+                    break;
+                }
+            }
+            if (allDepleted) StartCoroutine(AvailibleResourceCheck());
+            break;
+
+        case Jobs.GatherClay:
+            foreach (ResourceNode obj in allObjects)
+            {
+                if (obj.tag == "Clay" && !obj.depleted)
+                {
+                    currentDestination = obj.transform.position;
+                    Debug.Log(obj.transform.position);
+                    allDepleted = false;
+                    break;
+                }
+            }
+            if (allDepleted) StartCoroutine(AvailibleResourceCheck());
+            break;
     }
+}
+
     // Property for Golem type
     public GolemType Type => type;
 
     // Override methods from NpcBase
     protected override void Move()
     {
-        if (Vector3.Distance(transform.position, currentDestination) < 0.1f)
+        if (currentDestination != Vector3.zero)
         {
-            currentDestination = Vector3.zero; // Reset destination
-            return;
+            agent.SetDestination(currentDestination); // Move using NavMesh
         }
-
-        Vector3 direction = (currentDestination - transform.position).normalized;
-        if (direction != Vector3.zero)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(direction);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
-        }
-
-        transform.position = Vector3.MoveTowards(transform.position, currentDestination, 3*(dexterity * 0.1f) * Time.deltaTime);
     }
 
 
@@ -152,18 +195,25 @@ public class GolemBase : NpcBase
         {
             case Jobs.GatherWood:
                 Debug.Log($"{npcName} (Golem) is gathering wood.");
+                SetDestinationGather();
                 break;
             case Jobs.GatherRock:
                 Debug.Log($"{npcName} (Golem) is gathering rock.");
+                SetDestinationGather();
                 break;
             case Jobs.GatherClay:
                 Debug.Log($"{npcName} (Golem) is gathering clay.");
+                SetDestinationGather();
                 break;
             default:
                 Debug.Log($"{npcName} (Golem) is idle.");
                 break;
         }
     }
-    
+    private IEnumerator AvailibleResourceCheck()
+    {
+        yield return new WaitForSeconds(3f);
+        DecideGatherDeposit();
+    }
 
 }

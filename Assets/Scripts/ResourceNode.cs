@@ -7,26 +7,37 @@ public class ResourceNode : MonoBehaviour
 {
     [SerializeField] public int resourceValue;
     [SerializeField] public bool depleted;
-    private GolemBase golem;
     private void OnCollisionEnter(Collision collision)
     {
+        GolemBase golem;
         golem = collision.gameObject.GetComponent<GolemBase>();
         if (golem != null)
         {
             // Safely check if job matches
             if (System.Enum.TryParse("Gather" + gameObject.tag, out Jobs job))
             {
-                if (golem.CurrentJob == job)
+                if (golem.CurrentJob == job && !depleted)
                 {
-                    GatherResource();
+                    GatherResource(golem);
                 }
             }
         }
     }
-    public void GatherResource()
+    public void GatherResource(GolemBase golem)
     {
         if (golem == null) return;
         golem.Harvest(resourceValue);
-        depleted = true;
+
+        if (!depleted)
+        {
+            depleted = true;
+            Invoke(nameof(ResetDepleted), 10f);
+        }
     }
+
+    private void ResetDepleted()
+    {
+        depleted = false;
+    }
+
 }

@@ -8,6 +8,9 @@ TagManager:
   - Clay
   - WoodStorage
   - Wood
+  - Golem
+  - RockStorage
+  - ClayStorage
   layers:
   - Default
   - TransparentFX
