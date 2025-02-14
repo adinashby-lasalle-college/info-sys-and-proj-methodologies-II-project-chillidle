@@ -59,7 +59,7 @@ public class Building : MonoBehaviour
         Debug.Log($"{gameObject.tag} increased by {amount}. Current: {resourceQuantity}");
     }
 
-    public int GetResourceAmount(ResourceType type)
+    public int GetResourceAmount()
     {
         return resourceQuantity;
     }

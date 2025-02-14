@@ -11,6 +11,7 @@ TagManager:
   - Golem
   - RockStorage
   - ClayStorage
+  - TownHall
   layers:
   - Default
   - TransparentFX
